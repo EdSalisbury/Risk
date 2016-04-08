@@ -1,5 +1,5 @@
 import json
-from pprint import pprint
+import random
 cfg_dir = 'cfg'
 
 
@@ -12,6 +12,7 @@ def load_json_data(filename):
     for item in items:
         data[item['id']] = item
     return data
+
 
 def load_graph_data(filename, size):
     # Pre-allocate space for all of the items
@@ -28,15 +29,40 @@ def load_graph_data(filename, size):
 
     return data
 
+
+def territory_check():
+    for territory in territories:
+        if not territory:
+            continue
+
+        for adj in adjacencies[territory['id']]:
+            print "%s is adjacent to %s" % (territory['name'], territories[adj]['name'])
+            if territory['id'] not in adjacencies[territories[adj]['id']]:
+                print "FAIL"
+
+random.seed()
+
 continents = load_json_data('continents')
 territories = load_json_data('territories')
 adjacencies = load_graph_data('adjacencies', len(territories))
 
+num_players = 2
+
+territories_owned = list()
+for i in range(0, num_players):
+    territories_owned.append(list())
+
+territories_left = list()
 for territory in territories:
     if not territory:
         continue
+    territories_left.append(territory['id'])
+random.shuffle(territories_left)
 
-    for adj in adjacencies[territory['id']]:
-        print "%s is adjacent to %s" % (territory['name'], territories[adj]['name'])
-        if territory['id'] not in adjacencies[territories[adj]['id']]:
-            print "FAIL"
+for i in range(0, len(territories_left)):
+    territories_owned[i % num_players].append(territories_left[i])
+
+
+
+
+
