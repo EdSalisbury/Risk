@@ -40,5 +40,5 @@
   {"id": 39, "name": "Western Australia", "continent": 3},
   {"id": 40, "name": "Western Europe", "continent": 4},
   {"id": 41, "name": "Western United States", "continent": 5},
-  {"id": 42, "name": "Yakutsk", "continent": 2},
+  {"id": 42, "name": "Yakutsk", "continent": 2}
 ]
