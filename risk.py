@@ -1,5 +1,7 @@
 import json
 import random
+from pprint import pprint
+
 cfg_dir = 'cfg'
 
 
@@ -48,10 +50,18 @@ adjacencies = load_graph_data('adjacencies', len(territories))
 
 num_players = 2
 
+troops_per_player = 50 - (num_players * 5)
+
+# Distribute starting troops
+free_troops = [None] * num_players
+for i in range(0, num_players):
+    free_troops[i] = troops_per_player
+
 territories_owned = list()
 for i in range(0, num_players):
     territories_owned.append(list())
 
+# Distribute territories (Random distribution)
 territories_left = list()
 for territory in territories:
     if not territory:
@@ -62,7 +72,14 @@ random.shuffle(territories_left)
 for i in range(0, len(territories_left)):
     territories_owned[i % num_players].append(territories_left[i])
 
+troop_allocation = [0] * len(territories)
 
+# Distribute troops evenly
+for player in range(0, num_players):
+    while free_troops[player] > 0:
+        for terr_id in territories_owned[player]:
+            if free_troops[player] == 0:
+                continue
 
-
-
+            troop_allocation[terr_id] += 1
+            free_troops[player] -= 1
