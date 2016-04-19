@@ -46,6 +46,19 @@ def territory_check():
             if territory['id'] not in adjacencies[territories[adj]['id']]:
                 print "FAIL"
 
+
+def move_list(player_id, min):
+    moves = list()
+    for terr_id in players[player_id]['territories']:
+        for adj_id in adjacencies[terr_id]:
+            if territories[adj_id]['owner'] != player:
+                attackers = territories[terr_id]['troops']
+                defenders = territories[adj_id]['troops']
+                chance = win_chance[attackers][defenders]
+                if chance >= min:
+                    moves.append((terr_id, adj_id))
+    return moves
+
 random.seed()
 
 continents = load_json_data('continents')
@@ -163,20 +176,4 @@ win_chance_min = 0.7
 
 # Determine move list
 for player in players:
-    print "Player: %d" % player['id']
-    for territory in player['territories']:
-        for adj in adjacencies[territory]:
-            if territories[adj]['owner'] != player:
-                attackers = territories[territory]['troops']
-                defenders = territories[adj]['troops']
-                chance = win_chance[attackers][defenders]
-                if chance >= win_chance_min:
-                    print "Attack %s from %s (%d%%)" % (territories[territory]['name'], territories[adj]['name'], chance * 100)
-
-
-# Move generation:
-# Go through owned territories
-# Find adjacencies that are not owned by the player
-# Get troop numbers for each
-# Look up probabilities of winning a battle between the terrorities
-# See if it's above a threshold
+    print move_list(player['id'], win_chance_min)
