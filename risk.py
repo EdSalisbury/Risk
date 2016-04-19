@@ -72,6 +72,10 @@ for i in range(0, num_players):
     player = {'id': i, 'troops': troops_per_player, 'name': random.choice(names), 'territories': list(), 'continents': list()}
     players.append(player)
 
+for territory in territories:
+    territories[territory]['troops'] = 0
+    territories[territory]['owner'] = 0
+
 # Distribute territories (Random distribution)
 territories_left = list()
 for territory in territories:
@@ -80,10 +84,7 @@ random.shuffle(territories_left)
 
 for i in range(0, len(territories_left)):
     players[i % num_players]['territories'].append(territories_left[i])
-
-troops = dict()
-for territory in territories:
-    troops[territory] = 0
+    territories[territories_left[i]]['owner'] = i % num_players
 
 # Distribute troops evenly
 for player in players:
@@ -93,7 +94,7 @@ for player in players:
             if player['troops'] == 0:
                 continue
 
-            troops[terr_id] += 1
+            territories[terr_id]['troops'] += 1
             player['troops'] -= 1
 
 for player in players:
@@ -118,10 +119,13 @@ for player in players:
             player['continents'].append(continent)
 
 
+    # Add troops for continents
     print "Continents owned:"
     for continent in player['continents']:
+        player['troops'] += continents[continent]['value']
         print continents[continent]['name']
         score += continents[continent]['value'] * 50
+
 
     # Add troops for total number of owned territories
     player['troops'] += len(player['territories']) / 3
@@ -131,4 +135,48 @@ for player in players:
     print "Score: %d" % score
 
 
+
+    # Place troops
+    # Placement rules:
+    #
+    # Territory exposure value:
+    # Determine how vulnerable a territory is
+    # Factors:
+    #   Minimum of 2 troops on any exposed territory
+    #   Calculate exposure:
+    #   Go through adjacencies
+    #      If adjancent territory is not owned by the player, it's exposed
+    #      Add up enemy troops in adjancecies, subtract the player troops
+    #   Should a territory's value come into play?
+    # If not exposed, then 1 troop is fine
+
+# Determine exposure for each territory
+for territory in territories:
+    enemy_troops = 0
+    for adj in adjacencies[territory]:
+        if territories[adj]['owner'] != territories[territory]['owner']:
+            enemy_troops += territories[adj]['troops']
+    territories[territory]['exposure'] = enemy_troops - territories[territory]['troops']
+
+# Win chance threshold (TODO: make configurable)
+win_chance_min = 0.7
+
+# Determine move list
+for player in players:
+    print "Player: %d" % player['id']
+    for territory in player['territories']:
+        for adj in adjacencies[territory]:
+            if territories[adj]['owner'] != player:
+                attackers = territories[territory]['troops']
+                defenders = territories[adj]['troops']
+                chance = win_chance[attackers][defenders]
+                if chance >= win_chance_min:
+                    print "Attack %s from %s (%d%%)" % (territories[territory]['name'], territories[adj]['name'], chance * 100)
+
+
+# Move generation:
 # Go through owned territories
+# Find adjacencies that are not owned by the player
+# Get troop numbers for each
+# Look up probabilities of winning a battle between the terrorities
+# See if it's above a threshold
