@@ -98,14 +98,15 @@ for player in players:
 
 for player in players:
     print "Player name: %s" % player['name']
+    score = 0.0
 
     # List territories owned by a player
 
     print "Number of territories owned: %d" % len(player['territories'])
-    print "Territories owned:"
+    # print "Territories owned:"
     for territory in player['territories']:
-        print territories[territory]['name']
-
+        # print territories[territory]['name']
+        score += territories[territory]['value'] * 5
 
     # See which continents are owned by a player
     for continent in territories_in_continents:
@@ -116,13 +117,18 @@ for player in players:
         if owned:
             player['continents'].append(continent)
 
+
     print "Continents owned:"
     for continent in player['continents']:
         print continents[continent]['name']
+        score += continents[continent]['value'] * 50
 
     # Add troops for total number of owned territories
     player['troops'] += len(player['territories']) / 3
 
     print "Free troops: %d" % player['troops']
 
-    print
+    print "Score: %d" % score
+
+
+# Go through owned territories
