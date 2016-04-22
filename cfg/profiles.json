@@ -1,0 +1,26 @@
+[
+  {
+    "name": "reckless",
+    "min_chance": 50,
+    "territory_value": 5,
+    "continent_value": 50
+  },
+  {
+    "name": "aggressive",
+    "min_chance": 60,
+    "territory_value": 5,
+    "continent_value": 50
+  },
+  {
+    "name": "conservative",
+    "min_chance": 70,
+    "territory_value": 5,
+    "continent_value": 50
+  },
+  {
+    "name": "timid",
+    "min_chance": 80,
+    "territory_value": 5,
+    "continent_value": 50
+  }
+]
