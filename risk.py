@@ -1,6 +1,7 @@
 import json
 import random
 from pprint import pprint
+from format_columns import *
 
 cfg_dir = 'cfg'
 
@@ -70,7 +71,7 @@ def move_list(state, player_id, min):
 
 
 def update_exposure(state):
-    for player_id in state['players']:
+    for player_id in range(0, len(state['players'])):
         for terr_id in state['players'][player_id]['territories']:
             enemy_troops = 0
             for adj_terr_id in adjacencies[terr_id]:
@@ -80,7 +81,7 @@ def update_exposure(state):
 
 
 def update_score(state):
-    for player_id in state['players']:
+    for player_id in range(0, len(state['players'])):
         state['players'][player_id]['score'] = 0
         for continent in state['players'][player_id]['continents']:
             state['players'][player_id]['score'] += continents[continent]['value'] * 50
@@ -91,7 +92,7 @@ def update_score(state):
 
 
 def update_continents(state):
-    for player_id in state['players']:
+    for player_id in range(0, len(state['players'])):
         for cont_id in territory_map:
             owned = True
             for terr_id in territory_map[cont_id]:
@@ -102,7 +103,7 @@ def update_continents(state):
 
 
 def update_troops(state):
-    for player_id in state['players']:
+    for player_id in range(0, len(state['players'])):
         num_territories = len(state['players'][player_id]['territories'])
         state['players'][player_id]['troops'] += num_territories / 3
         for cont_id in state['players'][player_id]['continents']:
@@ -112,8 +113,8 @@ def update_troops(state):
 def init_game(profile_list):
     global state
     state['players'] = list()
-    state['troops'] = [0] * len(territories)
-    state['exposure'] = [0] * len(territories)
+    state['troops'] = [0] * (len(territories) + 1)
+    state['exposure'] = [0] * (len(territories) + 1)
 
     num_players = len(profile_list)
     troops_per_player = rules['troops_per_player'][num_players]
@@ -135,7 +136,9 @@ def init_game(profile_list):
         players.append(player)
         state['players'].append(dict())
         state['players'][player_id] = {'troops': troops_per_player,
-                                       'territories': [], 'continents': []}
+                                       'territories': [],
+                                       'continents': [],
+                                       'score':0}
         player_id += 1
 
 
@@ -151,6 +154,7 @@ def choose_territories(state):
         if state['players'][player_id]['troops'] > 0:
             state['players'][player_id]['territories'].append(terr_id)
             state['players'][player_id]['troops'] -= 1
+            state['troops'][terr_id] += 1
         player_id += 1
         if player_id >= len(players):
             player_id = 0
@@ -158,7 +162,7 @@ def choose_territories(state):
 
 def distribute_troops(state):
     # Distribute troops evenly
-    for player_id in state['players']:
+    for player_id, __ in enumerate(state['players']):
         while state['players'][player_id]['troops'] > 0:
             for terr_id in state['players'][player_id]['territories']:
                 if state['players'][player_id]['troops'] == 0:
@@ -169,9 +173,24 @@ def distribute_troops(state):
 
 
 def print_state(state):
+    output = list()
+    columns = list()
     for player_id, player in enumerate(state['players']):
+        data = ''
         profile_name = profiles[players[player_id]['profile']]['name']
-        print "%s (%s)" % (players[player_id]['name'], profile_name)
+        data += "%s (%s)\n" % (players[player_id]['name'], profile_name)
+        data += "Territories (%d):\n" % len(state['players'][player_id]['territories'])
+        for terr_id in state['players'][player_id]['territories']:
+            data += "%s (%d)\n" % (territories[terr_id]['name'], state['troops'][terr_id])
+        data += "Continents (%d):\n" % len(state['players'][player_id]['continents'])
+        for cont_id in state['players'][player_id]['continents']:
+            data += "%s\n" % continents[cont_id]['name']
+        data += "Free Troops: %d\n" % state['players'][player_id]['troops']
+        data += "Score: %d\n" % state['players'][player_id]['score']
+        output.append(data)
+        columns.append((30, LEFT))
+
+    print FormatColumns(columns, output)
 
 
 random.seed()
@@ -191,5 +210,9 @@ players = list()
 init_game([2, 1])
 
 choose_territories(state)
+distribute_troops(state)
+update_continents(state)
+update_exposure(state)
+update_score(state)
 
 print_state(state)
