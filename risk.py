@@ -160,9 +160,8 @@ def choose_territories(state):
             player_id = 0
 
 
-def distribute_troops(state):
-    # Distribute troops evenly
-    for player_id, __ in enumerate(state['players']):
+def distribute_troops(state, player_id, evenly=True):
+    if evenly:
         while state['players'][player_id]['troops'] > 0:
             for terr_id in state['players'][player_id]['territories']:
                 if state['players'][player_id]['troops'] == 0:
@@ -170,7 +169,145 @@ def distribute_troops(state):
 
                 state['troops'][terr_id] += 1
                 state['players'][player_id]['troops'] -= 1
+    else:
+        pass
+        # Need to provide all permutations
+        # Create list of possibles and return it?
 
+    # example:
+    # 3 territories
+    # 3 troops
+    # (0, 0, 3)
+    # (0, 1, 2)
+    # (0, 2, 1)
+    # (0, 3, 0)
+    # (1, 0, 2)
+    # (1, 1, 1)
+    # (1, 2, 0)
+    # (2, 0, 1)
+    # (2, 1, 0)
+    # (3, 0, 0)
+
+    # 2 choose 1
+    # (0, 1)
+    # (1, 0)
+
+    # 2 choose 2
+    # (1, 1)
+    # (2, 0)
+    # (0, 2)
+
+    # 2 choose 3
+    # (3, 0)
+    # (2, 1)
+    # (1, 2)
+    # (0, 3)
+
+    # 3 choose 1
+    # (1, 0, 0)
+    # (0, 1, 0)
+    # (0, 0, 1)
+
+    # 3 choose 2
+    # (2, 0, 0)
+    # (1, 1, 0)
+    # (0, 1, 1)
+    # (0, 2, 0)
+    # (0, 0, 2)
+
+    # (0, 0, 2)
+    # (0, 1, 1)
+    # (1, 0, 1)
+    # (1, 1, 0)
+    # (2, 0, 0)
+    # (0, 2, 0)
+
+    # What about if you set a max, so like:
+    # max = 2, total = 2
+    # (0, 0, 2)
+    # (0, 2, 0)
+    # (2, 0, 0)
+    # max = 1, total = 2
+    # (1, 1, 0)
+    # (1, 0, 1)
+    # (0, 1, 1)
+
+    # 3 choose 1
+    # max = 1, total = 1
+    # (0, 0, 1)
+    # (0, 1, 0)
+    # (1, 0, 0)
+
+    # Fix one column to be the max
+
+    # 3 choose 3
+    # max = 3, total = 3
+    # (0, 0, 3)
+    # (0, 3, 0)
+    # (3, 0, 0)
+    # max = 2, total = 3
+    # (2, 0, 1)
+    # (2, 1, 0)
+
+    # (1, 2, 0)
+    # (0, 2, 1)
+
+    # (0, 1, 2)
+    # (1, 0, 2)
+
+    # max = 1, total = 3
+    # (1, 1, 1)
+
+    # Can we go recursively?
+    # permute(n, m, max)
+    # permute(3, 3, 3)
+    # [[0, 0, 3], [0, 3, 0], [3, 0, 0]]
+    # permute(3, 3, 2)
+    # [[2, 1, 0], [2, 0, 1], [0, 2, 1], [1, 2, 0], [0, 1, 2], [1, 0, 2]]
+    # []0, 1], [1, 0]] - filled in for each permutation 2 choose 1
+    # permute(3, 3, 1)
+    # [[1, 1, 1]]
+
+
+
+
+
+    # Idea:
+    # There are 3 possibilities
+    # (3, 0, 0)
+    # (1, 2, 0)
+    # (1, 1, 1)
+    # For 4 choose 4:
+    # (4, 0, 0, 0)
+    # (3, 1, 0, 0)
+    # (2, 1, 1, 0)
+    # (1, 1, 1, 1)
+
+    # 4 choose 3
+    # (3, 0, 0, 0)
+    # (2, 1, 0, 0)
+    # (1, 1, 1, 0)
+
+    # 3 Choose 4
+    # (4, 0, 0)
+    # (3, 1, 0)
+    # (2, 1, 1)
+    # (2, 2, 0)
+
+    # How to get all different ordering?
+
+def permute(n, m):
+    perm_list = list()
+    max = m
+    col = 0
+    while max > 0:
+        perm = [0] * n
+        perm[col] = max
+        perms = permute(n - 1, max)
+        
+        perm_list.append(perm)
+        max -= 1
+    return perm_list
 
 def print_state(state):
     output = list()
@@ -210,8 +347,11 @@ players = list()
 init_game([2, 1])
 
 choose_territories(state)
-distribute_troops(state)
 update_continents(state)
+
+for player_id in range(0, len(players)):
+    distribute_troops(state, player_id)
+
 update_exposure(state)
 update_score(state)
 
