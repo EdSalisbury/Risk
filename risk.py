@@ -77,7 +77,7 @@ def update_exposure(state):
             for adj_terr_id in adjacencies[terr_id]:
                 if adj_terr_id not in state['players'][player_id]['territories']:
                     enemy_troops += state['troops'][adj_terr_id]
-        state['exposure'][terr_id] = enemy_troops - state['troops'][terr_id]
+            state['exposure'][terr_id] = enemy_troops - state['troops'][terr_id]
 
 
 def update_score(state):
@@ -102,12 +102,11 @@ def update_continents(state):
                 state['players'][player_id]['continents'].append(cont_id)
 
 
-def update_troops(state):
-    for player_id in range(0, len(state['players'])):
-        num_territories = len(state['players'][player_id]['territories'])
-        state['players'][player_id]['troops'] += num_territories / 3
-        for cont_id in state['players'][player_id]['continents']:
-            state['players'][player_id]['troops'] += continents[cont_id]['value']
+def update_troops(state, player_id):
+    num_territories = len(state['players'][player_id]['territories'])
+    state['players'][player_id]['troops'] += num_territories / 3
+    for cont_id in state['players'][player_id]['continents']:
+        state['players'][player_id]['troops'] += continents[cont_id]['value']
 
 
 def init_game(profile_list):
@@ -160,154 +159,28 @@ def choose_territories(state):
             player_id = 0
 
 
-def distribute_troops(state, player_id, evenly=True):
-    if evenly:
-        while state['players'][player_id]['troops'] > 0:
-            for terr_id in state['players'][player_id]['territories']:
-                if state['players'][player_id]['troops'] == 0:
-                    continue
+def distribute_troops(state, player_id, initial=False):
+    # Go through exposure ratings, and add troops evenly until every owned territory is 0 or less
+    # With remaining troops, go through all adjacent territories, and find the one that is most valuable
+    # Place all remaining troops on the owned adjacent territory
+    done = False
+    while state['players'][player_id]['troops'] > 0 and not done:
+        max_exposure = 0
+        for terr_id in state['players'][player_id]['territories']:
+            if state['exposure'][terr_id] > max_exposure:
+                max_exposure = state['exposure'][terr_id]
+                terr_to_fortify = terr_id
 
-                state['troops'][terr_id] += 1
-                state['players'][player_id]['troops'] -= 1
-    else:
-        pass
-        # Need to provide all permutations
-        # Create list of possibles and return it?
-
-    # example:
-    # 3 territories
-    # 3 troops
-    # (0, 0, 3)
-    # (0, 1, 2)
-    # (0, 2, 1)
-    # (0, 3, 0)
-    # (1, 0, 2)
-    # (1, 1, 1)
-    # (1, 2, 0)
-    # (2, 0, 1)
-    # (2, 1, 0)
-    # (3, 0, 0)
-
-    # 2 choose 1
-    # (0, 1)
-    # (1, 0)
-
-    # 2 choose 2
-    # (1, 1)
-    # (2, 0)
-    # (0, 2)
-
-    # 2 choose 3
-    # (3, 0)
-    # (2, 1)
-    # (1, 2)
-    # (0, 3)
-
-    # 3 choose 1
-    # (1, 0, 0)
-    # (0, 1, 0)
-    # (0, 0, 1)
-
-    # 3 choose 2
-    # (2, 0, 0)
-    # (1, 1, 0)
-    # (0, 1, 1)
-    # (0, 2, 0)
-    # (0, 0, 2)
-
-    # (0, 0, 2)
-    # (0, 1, 1)
-    # (1, 0, 1)
-    # (1, 1, 0)
-    # (2, 0, 0)
-    # (0, 2, 0)
-
-    # What about if you set a max, so like:
-    # max = 2, total = 2
-    # (0, 0, 2)
-    # (0, 2, 0)
-    # (2, 0, 0)
-    # max = 1, total = 2
-    # (1, 1, 0)
-    # (1, 0, 1)
-    # (0, 1, 1)
-
-    # 3 choose 1
-    # max = 1, total = 1
-    # (0, 0, 1)
-    # (0, 1, 0)
-    # (1, 0, 0)
-
-    # Fix one column to be the max
-
-    # 3 choose 3
-    # max = 3, total = 3
-    # (0, 0, 3)
-    # (0, 3, 0)
-    # (3, 0, 0)
-    # max = 2, total = 3
-    # (2, 0, 1)
-    # (2, 1, 0)
-
-    # (1, 2, 0)
-    # (0, 2, 1)
-
-    # (0, 1, 2)
-    # (1, 0, 2)
-
-    # max = 1, total = 3
-    # (1, 1, 1)
-
-    # Can we go recursively?
-    # permute(n, m, max)
-    # permute(3, 3, 3)
-    # [[0, 0, 3], [0, 3, 0], [3, 0, 0]]
-    # permute(3, 3, 2)
-    # [[2, 1, 0], [2, 0, 1], [0, 2, 1], [1, 2, 0], [0, 1, 2], [1, 0, 2]]
-    # []0, 1], [1, 0]] - filled in for each permutation 2 choose 1
-    # permute(3, 3, 1)
-    # [[1, 1, 1]]
+        if max_exposure == 0:
+            done = True
+        else:
+            state['troops'][terr_to_fortify] += 1
+            state['players'][player_id]['troops'] -= 1
+            update_exposure(state)
+            if initial:
+                done = True
 
 
-
-
-
-    # Idea:
-    # There are 3 possibilities
-    # (3, 0, 0)
-    # (1, 2, 0)
-    # (1, 1, 1)
-    # For 4 choose 4:
-    # (4, 0, 0, 0)
-    # (3, 1, 0, 0)
-    # (2, 1, 1, 0)
-    # (1, 1, 1, 1)
-
-    # 4 choose 3
-    # (3, 0, 0, 0)
-    # (2, 1, 0, 0)
-    # (1, 1, 1, 0)
-
-    # 3 Choose 4
-    # (4, 0, 0)
-    # (3, 1, 0)
-    # (2, 1, 1)
-    # (2, 2, 0)
-
-    # How to get all different ordering?
-
-def permute(n, m):
-    perm_list = list()
-    max = m
-    col = 0
-    while max > 0:
-        perm = [0] * n
-        perm[col] = max
-        perms = permute(n - 1, max)
-        
-        perm_list.append(perm)
-        max -= 1
-    return perm_list
 
 def print_state(state):
     output = list()
@@ -344,15 +217,26 @@ profiles = load_data('profiles')
 state = dict()
 players = list()
 
-init_game([2, 1])
+init_game([2, 2])
 
 choose_territories(state)
+
 update_continents(state)
+update_exposure(state)
 
 for player_id in range(0, len(players)):
-    distribute_troops(state, player_id)
+    update_troops(state, player_id)
 
-update_exposure(state)
+players_to_place = list()
+for player_id in range(0, len(players)):
+    players_to_place.append(player_id)
+
+while len(players_to_place) > 0:
+    for player_id in players_to_place:
+        if state['players'][player_id]['troops'] > 0:
+            distribute_troops(state, player_id, True)
+        else:
+            players_to_place.remove(player_id)
+
 update_score(state)
-
 print_state(state)

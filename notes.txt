@@ -44,3 +44,146 @@ for player in players:
 # state['players'][player_id] = {"territories": [2, 4, 6], "continents": [1, 3, 5], "score": 0, "troops": 0}
 # state['troops'] = [5, 2, 5, 4, 2... ]
 # state['exposure'] = [0, 2, 5, 3, ...]
+
+
+    # example:
+    # 3 territories
+    # 3 troops
+    # (0, 0, 3)
+    # (0, 1, 2)
+    # (0, 2, 1)
+    # (0, 3, 0)
+    # (1, 0, 2)
+    # (1, 1, 1)
+    # (1, 2, 0)
+    # (2, 0, 1)
+    # (2, 1, 0)
+    # (3, 0, 0)
+
+    # 2 choose 1
+    # (0, 1)
+    # (1, 0)
+
+    # 2 choose 2
+    # (1, 1)
+    # (2, 0)
+    # (0, 2)
+
+    # 2 choose 3
+    # (3, 0)
+    # (2, 1)
+    # (1, 2)
+    # (0, 3)
+
+    # 3 choose 1
+    # (1, 0, 0)
+    # (0, 1, 0)
+    # (0, 0, 1)
+
+    # 3 choose 2
+    # (2, 0, 0)
+    # (1, 1, 0)
+    # (0, 1, 1)
+    # (0, 2, 0)
+    # (0, 0, 2)
+
+    # (0, 0, 2)
+    # (0, 1, 1)
+    # (1, 0, 1)
+    # (1, 1, 0)
+    # (2, 0, 0)
+    # (0, 2, 0)
+
+    # What about if you set a max, so like:
+    # max = 2, total = 2
+    # (0, 0, 2)
+    # (0, 2, 0)
+    # (2, 0, 0)
+    # max = 1, total = 2
+    # (1, 1, 0)
+    # (1, 0, 1)
+    # (0, 1, 1)
+
+    # 3 choose 1
+    # max = 1, total = 1
+    # (0, 0, 1)
+    # (0, 1, 0)
+    # (1, 0, 0)
+
+    # Fix one column to be the max
+
+    # 3 choose 3
+    # max = 3, total = 3
+    # (0, 0, 3)
+    # (0, 3, 0)
+    # (3, 0, 0)
+    # max = 2, total = 3
+    # (2, 0, 1)
+    # (2, 1, 0)
+
+    # (1, 2, 0)
+    # (0, 2, 1)
+
+    # (0, 1, 2)
+    # (1, 0, 2)
+
+    # max = 1, total = 3
+    # (1, 1, 1)
+
+    # Can we go recursively?
+    # permute(n, m, max)
+    # permute(3, 3, 3)
+    # [[0, 0, 3], [0, 3, 0], [3, 0, 0]]
+    # permute(3, 3, 2)
+    # [[2, 1, 0], [2, 0, 1], [0, 2, 1], [1, 2, 0], [0, 1, 2], [1, 0, 2]]
+    # []0, 1], [1, 0]] - filled in for each permutation 2 choose 1
+    # permute(3, 3, 1)
+    # [[1, 1, 1]]
+
+
+
+
+
+    # Idea:
+    # There are 3 possibilities
+    # (3, 0, 0)
+    # (1, 2, 0)
+    # (1, 1, 1)
+    # For 4 choose 4:
+    # (4, 0, 0, 0)
+    # (3, 1, 0, 0)
+    # (2, 1, 1, 0)
+    # (1, 1, 1, 1)
+
+    # 4 choose 3
+    # (3, 0, 0, 0)
+    # (2, 1, 0, 0)
+    # (1, 1, 1, 0)
+
+    # 3 Choose 4
+    # (4, 0, 0)
+    # (3, 1, 0)
+    # (2, 1, 1)
+    # (2, 2, 0)
+
+    # How to get all different ordering?
+
+    # All combinations is dumb for troop deployment (so many options), so therefore, we need a better method
+    # Go through each territory, get exposure
+    # First priority, get exposure down to 0
+    # We could still use the permutations, by only evalutating those territories that are viable for attacking, maybe
+    # Another option - all or nothing - take all of those that are left, and put them only on *one* territory
+    # Exposed territories (reduced from all owned)
+    # Only troops that are left from fixing the exposure
+    # The player will always be looking to defend (no sacrificing)
+    # Based on minimax, it would choose the best territory to place all of the remaining troops on, due to the exposure
+    # But not necessarily the best strategic territories to choose
+    # Maybe if you can look at what are the most strategic territories to capture, ignoring the percentages?
+    # multiple passes - take one pass that would just choose the territories it thinks are the best, and make a list of
+    # targets, prioritized by highest to lowest
+    # Maybe finding out which owned territories are the closest to the most desired territories
+    # Need a distance map, using adjacencies - that's easy to calculate
+    # What about most valuable adjacent territory?
+    # Place all remaining troops on owned adjacent territory
+    # Done - move to attacks
+
