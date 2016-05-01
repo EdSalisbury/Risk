@@ -1,6 +1,8 @@
 import json
 import random
 from pprint import pprint
+from copy import deepcopy
+import numpy as np
 from format_columns import *
 
 cfg_dir = 'cfg'
@@ -57,17 +59,20 @@ def territory_check():
                 print "FAIL"
 
 
-def move_list(state, player_id, min):
-    moves = list()
+def attack_list(state, player_id):
+    profile_id = players[player_id]['profile']
+    min_chance = profiles[profile_id]['min_chance']
+
+    attacks = list()
     for terr_id in state['players'][player_id]['territories']:
         for adj_terr_id in adjacencies[terr_id]:
             if adj_terr_id not in state['players'][player_id]['territories']:
                 attackers = state['troops'][terr_id]
                 defenders = state['troops'][adj_terr_id]
                 chance = win_chance[attackers][defenders]
-                if chance >= min:
-                    moves.append(terr_id, adj_terr_id)
-    return moves
+                if chance >= min_chance:
+                    attacks.append([terr_id, adj_terr_id, chance])
+    return attacks
 
 
 def update_exposure(state):
@@ -98,7 +103,7 @@ def update_continents(state):
             for terr_id in territory_map[cont_id]:
                 if terr_id not in state['players'][player_id]['territories']:
                     owned = False
-            if owned:
+            if owned and cont_id not in state['players'][player_id]['continents']:
                 state['players'][player_id]['continents'].append(cont_id)
 
 
@@ -181,27 +186,46 @@ def distribute_troops(state, player_id, initial=False):
                 done = True
 
 
-
-def print_state(state):
+def print_state(my_state):
     output = list()
     columns = list()
-    for player_id, player in enumerate(state['players']):
+    for player_id, player in enumerate(my_state['players']):
         data = ''
         profile_name = profiles[players[player_id]['profile']]['name']
         data += "%s (%s)\n" % (players[player_id]['name'], profile_name)
-        data += "Territories (%d):\n" % len(state['players'][player_id]['territories'])
-        for terr_id in state['players'][player_id]['territories']:
+        data += "Territories (%d):\n" % len(my_state['players'][player_id]['territories'])
+        for terr_id in my_state['players'][player_id]['territories']:
             data += "%s (%d)\n" % (territories[terr_id]['name'], state['troops'][terr_id])
-        data += "Continents (%d):\n" % len(state['players'][player_id]['continents'])
-        for cont_id in state['players'][player_id]['continents']:
+        data += "Continents (%d):\n" % len(my_state['players'][player_id]['continents'])
+        for cont_id in my_state['players'][player_id]['continents']:
             data += "%s\n" % continents[cont_id]['name']
-        data += "Free Troops: %d\n" % state['players'][player_id]['troops']
-        data += "Score: %d\n" % state['players'][player_id]['score']
+        data += "Free Troops: %d\n" % my_state['players'][player_id]['troops']
+        data += "Score: %d\n" % my_state['players'][player_id]['score']
         output.append(data)
         columns.append((30, LEFT))
 
     print FormatColumns(columns, output)
 
+
+def troops_left(attackers, defenders):
+    # Simplified troop loss predictor
+    # Assumes battle is won, and that there will always be at least two attacking troops left
+    troops = round((attackers * 1.20) - defenders)
+    if troops < 2:
+        troops = 2
+    return troops
+
+
+def get_owner(state, terr_id):
+    for player_id in range(0, len(state['players'])):
+        if terr_id in state['players'][player_id]['territories']:
+            return player_id
+
+
+def takeover(my_state, terr_id, player_id):
+    old_owner_id = get_owner(my_state, terr_id)
+    my_state['players'][player_id]['territories'].append(terr_id)
+    my_state['players'][old_owner_id]['territories'].remove(terr_id)
 
 random.seed()
 
@@ -239,4 +263,80 @@ while len(players_to_place) > 0:
             players_to_place.remove(player_id)
 
 update_score(state)
+
+print "Initial"
 print_state(state)
+
+print "Turn 1"
+
+update_troops(state, 0)
+distribute_troops(state, 0)
+print_state(state)
+
+possible_attacks = attack_list(state, 0)
+
+player_id = 0
+# Assume all attacks are successful
+deltas = list()
+
+for attack in possible_attacks:
+    # Make a copy of the current state
+    new_state = deepcopy(state)
+
+    terr_id = attack[0]
+    adj_terr_id = attack[1]
+    chance = attack[2]
+
+    enemy_player_id = get_owner(new_state, adj_terr_id)
+    score_before = new_state['players'][player_id]['score']
+    enemy_score_before = new_state['players'][enemy_player_id]['score']
+
+    attackers = new_state['troops'][terr_id]
+    defenders = new_state['troops'][adj_terr_id]
+
+    new_attackers = troops_left(attackers, defenders)
+
+    new_state['troops'][terr_id] = 1
+    new_state['troops'][adj_terr_id] = new_attackers - 1
+    takeover(new_state, adj_terr_id, player_id)
+
+    update_continents(new_state)
+    update_exposure(new_state)
+    update_score(new_state)
+
+    score_after = new_state['players'][player_id]['score']
+    enemy_score_after = new_state['players'][enemy_player_id]['score']
+
+    player_delta = score_after - score_before
+    enemy_delta = enemy_score_after - enemy_score_before
+
+    delta = player_delta - enemy_delta
+
+    deltas.append(delta)
+    print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
+                                     score_before, score_after, player_delta, enemy_score_before, enemy_score_after, enemy_delta, delta)
+
+best_attack = np.argmax(deltas)
+
+attack = possible_attacks[best_attack]
+terr_id = attack[0]
+adj_terr_id = attack[1]
+enemy_player_id = get_owner(state, adj_terr_id)
+print
+print "%s attacks %s (owned by %s) from %s:" % (players[player_id]['name'], territories[adj_terr_id]['name'], players[enemy_player_id]['name'], territories[terr_id]['name'])
+attackers = state['troops'][terr_id]
+defenders = state['troops'][adj_terr_id]
+
+new_attackers = troops_left(attackers, defenders)
+
+state['troops'][terr_id] = 1
+state['troops'][adj_terr_id] = new_attackers - 1
+takeover(state, adj_terr_id, player_id)
+
+update_continents(state)
+update_exposure(state)
+update_score(state)
+
+print_state(state)
+
+
