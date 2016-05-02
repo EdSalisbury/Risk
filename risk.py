@@ -114,10 +114,18 @@ def update_continents(state):
 
 
 def update_troops(state, player_id):
+    num_troops = 0
     num_territories = len(state['players'][player_id]['territories'])
-    state['players'][player_id]['troops'] += num_territories / 3
+    num_troops += num_territories / 3
+
     for cont_id in state['players'][player_id]['continents']:
-        state['players'][player_id]['troops'] += continents[cont_id]['value']
+        num_troops += continents[cont_id]['value']
+
+    if num_troops < 3:
+        num_troops = 3
+
+    state['players'][player_id]['troops'] += num_troops
+    print "%s has %d troops to distribute" % (players[player_id]['name'], state['players'][player_id]['troops'])
 
 
 def init_game(profile_list):
@@ -184,6 +192,7 @@ def distribute_troops(state, player_id, initial=False):
         most_exposed = np.argmax(exposed_territories)
         state['troops'][most_exposed] += 1
         state['players'][player_id]['troops'] -= 1
+        print "%s places a troop in %s" % (players[player_id]['name'], territories[most_exposed]['name'])
         update_exposure(state)
 
 
@@ -330,8 +339,8 @@ while game_running:
             delta = player_delta - enemy_delta
 
             deltas.append(delta)
-            #print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
-            #                                 score_before, score_after, player_delta, enemy_score_before, enemy_score_after, enemy_delta, delta)
+            print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
+                                             score_before, score_after, player_delta, enemy_score_before, enemy_score_after, enemy_delta, delta)
 
         if len(deltas):
             best_attack = np.argmax(deltas)
@@ -357,10 +366,10 @@ while game_running:
                 update_exposure(state)
                 update_score(state)
             else:
-                print "%s does not attack" % players[player_id]['name']
+                print "%s does not attack." % players[player_id]['name']
                 done = True
         else:
-            print "%s does not attack" % players[player_id]['name']
+            print "%s does not attack." % players[player_id]['name']
             done = True
 
     # TODO: Move Troops
