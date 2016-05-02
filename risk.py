@@ -1,12 +1,31 @@
+#!/bin/env python
+
 import json
 import random
 from pprint import pprint
 from copy import deepcopy
 import numpy as np
 from format_columns import *
+import sys
 
 cfg_dir = 'cfg'
 
+debug = False
+
+if len(sys.argv) > 1:
+    args = sys.argv
+    args.pop(0)
+    if args[0] == '-d':
+        debug = True
+        args.pop(0)
+
+if len(args):
+    num_players = int(args[0])
+    if num_players < 2 or num_players > 6:
+        print "Error: invalid number of players!"
+        exit()
+else:
+    num_players = 2
 
 def load_json_data(filename):
     with open('cfg/%s.json' % filename) as data_file:
@@ -68,6 +87,8 @@ def attack_list(state, player_id):
         for adj_terr_id in adjacencies[terr_id]:
             if adj_terr_id not in state['players'][player_id]['territories']:
                 num_attackers = state['troops'][terr_id]
+                if num_attackers < 2:
+                    continue
                 num_defenders = state['troops'][adj_terr_id]
                 try:
                     chance = win_chance[num_attackers][num_defenders]
@@ -125,7 +146,8 @@ def update_troops(state, player_id):
         num_troops = 3
 
     state['players'][player_id]['troops'] += num_troops
-    print "%s has %d troops to distribute" % (players[player_id]['name'], state['players'][player_id]['troops'])
+    if debug:
+        print "%s has %d troops to distribute" % (players[player_id]['name'], state['players'][player_id]['troops'])
 
 
 def init_game(profile_list):
@@ -188,12 +210,14 @@ def distribute_troops(state, player_id, initial=False):
         exposed_territories = [None] * (len(territories) + 1)
         for terr_id in owned_territories:
             exposed_territories[terr_id] = state['exposure'][terr_id]
-            print "Exposure for %s: %d" % (territories[terr_id]['name'], state['exposure'][terr_id])
+            if debug:
+                print "Exposure for %s: %d" % (territories[terr_id]['name'], state['exposure'][terr_id])
 
         most_exposed = np.argmax(exposed_territories)
         state['troops'][most_exposed] += 1
         state['players'][player_id]['troops'] -= 1
-        print "%s places a troop in %s" % (players[player_id]['name'], territories[most_exposed]['name'])
+        if debug:
+            print "%s places a troop in %s" % (players[player_id]['name'], territories[most_exposed]['name'])
         update_exposure(state)
 
 
@@ -252,7 +276,13 @@ profiles = load_data('profiles')
 state = dict()
 players = list()
 
-init_game([2, 2, 1, 0, 3])
+init_list = list()
+
+for p in range(0, num_players):
+    profile = random.choice(range(0, len(profiles)))
+    init_list.append(profile)
+
+init_game(init_list)
 
 choose_territories(state)
 
@@ -340,7 +370,8 @@ while game_running:
             delta = player_delta - enemy_delta
 
             deltas.append(delta)
-            print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
+            if debug:
+                print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
                                              score_before, score_after, player_delta, enemy_score_before, enemy_score_after, enemy_delta, delta)
 
         if len(deltas):
