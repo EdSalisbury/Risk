@@ -188,6 +188,7 @@ def distribute_troops(state, player_id, initial=False):
         exposed_territories = [None] * (len(territories) + 1)
         for terr_id in owned_territories:
             exposed_territories[terr_id] = state['exposure'][terr_id]
+            print "Exposure for %s: %d" % (territories[terr_id]['name'], state['exposure'][terr_id])
 
         most_exposed = np.argmax(exposed_territories)
         state['troops'][most_exposed] += 1
