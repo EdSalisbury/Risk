@@ -67,9 +67,14 @@ def attack_list(state, player_id):
     for terr_id in state['players'][player_id]['territories']:
         for adj_terr_id in adjacencies[terr_id]:
             if adj_terr_id not in state['players'][player_id]['territories']:
-                attackers = state['troops'][terr_id]
-                defenders = state['troops'][adj_terr_id]
-                chance = win_chance[attackers][defenders]
+                num_attackers = state['troops'][terr_id]
+                num_defenders = state['troops'][adj_terr_id]
+                try:
+                    chance = win_chance[num_attackers][num_defenders]
+                except IndexError:
+                    print "Warning: Cannot determine win chance with %d attackers and %d defenders" % (num_attackers, num_defenders)
+                    chance = 1
+
                 if chance >= min_chance:
                     attacks.append([terr_id, adj_terr_id, chance])
     return attacks
@@ -98,12 +103,13 @@ def update_score(state):
 
 def update_continents(state):
     for player_id in range(0, len(state['players'])):
+        state['players'][player_id]['continents'] = list()
         for cont_id in territory_map:
             owned = True
             for terr_id in territory_map[cont_id]:
                 if terr_id not in state['players'][player_id]['territories']:
                     owned = False
-            if owned and cont_id not in state['players'][player_id]['continents']:
+            if owned:
                 state['players'][player_id]['continents'].append(cont_id)
 
 
@@ -168,22 +174,17 @@ def distribute_troops(state, player_id, initial=False):
     # Go through exposure ratings, and add troops evenly until every owned territory is 0 or less
     # With remaining troops, go through all adjacent territories, and find the one that is most valuable
     # Place all remaining troops on the owned adjacent territory
-    done = False
-    while state['players'][player_id]['troops'] > 0 and not done:
-        max_exposure = 0
-        for terr_id in state['players'][player_id]['territories']:
-            if state['exposure'][terr_id] > max_exposure:
-                max_exposure = state['exposure'][terr_id]
-                terr_to_fortify = terr_id
 
-        if max_exposure == 0:
-            done = True
-        else:
-            state['troops'][terr_to_fortify] += 1
-            state['players'][player_id]['troops'] -= 1
-            update_exposure(state)
-            if initial:
-                done = True
+    while state['players'][player_id]['troops']:
+        owned_territories = state['players'][player_id]['territories']
+        exposed_territories = [None] * (len(territories) + 1)
+        for terr_id in owned_territories:
+            exposed_territories[terr_id] = state['exposure'][terr_id]
+
+        most_exposed = np.argmax(exposed_territories)
+        state['troops'][most_exposed] += 1
+        state['players'][player_id]['troops'] -= 1
+        update_exposure(state)
 
 
 def print_state(my_state):
@@ -210,7 +211,7 @@ def print_state(my_state):
 def troops_left(attackers, defenders):
     # Simplified troop loss predictor
     # Assumes battle is won, and that there will always be at least two attacking troops left
-    troops = round((attackers * 1.20) - defenders)
+    troops = int((attackers * 1.20) - defenders)
     if troops < 2:
         troops = 2
     return troops
@@ -241,7 +242,7 @@ profiles = load_data('profiles')
 state = dict()
 players = list()
 
-init_game([2, 2])
+init_game([2, 2, 1, 0, 3])
 
 choose_territories(state)
 
@@ -264,79 +265,121 @@ while len(players_to_place) > 0:
 
 update_score(state)
 
-print "Initial"
+print "Initial State"
 print_state(state)
 
-print "Turn 1"
-
-update_troops(state, 0)
-distribute_troops(state, 0)
-print_state(state)
-
-possible_attacks = attack_list(state, 0)
-
+turn = 1
 player_id = 0
-# Assume all attacks are successful
-deltas = list()
+game_running = True
 
-for attack in possible_attacks:
-    # Make a copy of the current state
-    new_state = deepcopy(state)
+active_players = list()
+for player_id in range(0, len(players)):
+    active_players.append(player_id)
 
-    terr_id = attack[0]
-    adj_terr_id = attack[1]
-    chance = attack[2]
+while game_running:
+    if player_id not in active_players:
+        player_id += 1
+        if player_id >= len(players):
+            player_id = 0
+        continue
 
-    enemy_player_id = get_owner(new_state, adj_terr_id)
-    score_before = new_state['players'][player_id]['score']
-    enemy_score_before = new_state['players'][enemy_player_id]['score']
+    print
+    print "Turn %d, %s's turn" % (turn, players[player_id]['name'])
 
-    attackers = new_state['troops'][terr_id]
-    defenders = new_state['troops'][adj_terr_id]
+    update_troops(state, player_id)
+    distribute_troops(state, player_id)
+    print_state(state)
 
-    new_attackers = troops_left(attackers, defenders)
+    done = False
+    while not done:
+        possible_attacks = attack_list(state, player_id)
 
-    new_state['troops'][terr_id] = 1
-    new_state['troops'][adj_terr_id] = new_attackers - 1
-    takeover(new_state, adj_terr_id, player_id)
+        deltas = list()
 
-    update_continents(new_state)
-    update_exposure(new_state)
-    update_score(new_state)
+        for attack in possible_attacks:
+            # Make a copy of the current state
+            new_state = deepcopy(state)
 
-    score_after = new_state['players'][player_id]['score']
-    enemy_score_after = new_state['players'][enemy_player_id]['score']
+            terr_id = attack[0]
+            adj_terr_id = attack[1]
+            chance = attack[2]
 
-    player_delta = score_after - score_before
-    enemy_delta = enemy_score_after - enemy_score_before
+            enemy_player_id = get_owner(new_state, adj_terr_id)
+            score_before = new_state['players'][player_id]['score']
+            enemy_score_before = new_state['players'][enemy_player_id]['score']
 
-    delta = player_delta - enemy_delta
+            attackers = new_state['troops'][terr_id]
+            defenders = new_state['troops'][adj_terr_id]
 
-    deltas.append(delta)
-    print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
-                                     score_before, score_after, player_delta, enemy_score_before, enemy_score_after, enemy_delta, delta)
+            new_attackers = troops_left(attackers, defenders)
 
-best_attack = np.argmax(deltas)
+            new_state['troops'][terr_id] = 1
+            new_state['troops'][adj_terr_id] = new_attackers - 1
+            takeover(new_state, adj_terr_id, player_id)
 
-attack = possible_attacks[best_attack]
-terr_id = attack[0]
-adj_terr_id = attack[1]
-enemy_player_id = get_owner(state, adj_terr_id)
-print
-print "%s attacks %s (owned by %s) from %s:" % (players[player_id]['name'], territories[adj_terr_id]['name'], players[enemy_player_id]['name'], territories[terr_id]['name'])
-attackers = state['troops'][terr_id]
-defenders = state['troops'][adj_terr_id]
+            update_continents(new_state)
+            update_exposure(new_state)
+            update_score(new_state)
 
-new_attackers = troops_left(attackers, defenders)
+            score_after = new_state['players'][player_id]['score']
+            enemy_score_after = new_state['players'][enemy_player_id]['score']
 
-state['troops'][terr_id] = 1
-state['troops'][adj_terr_id] = new_attackers - 1
-takeover(state, adj_terr_id, player_id)
+            player_delta = score_after - score_before
+            enemy_delta = enemy_score_after - enemy_score_before
 
-update_continents(state)
-update_exposure(state)
-update_score(state)
+            delta = player_delta - enemy_delta
 
-print_state(state)
+            deltas.append(delta)
+            #print "%s -> %s (%f) = %d/%d (%d) - %d/%d (%d) == %d" % (territories[terr_id]['name'], territories[adj_terr_id]['name'], chance,
+            #                                 score_before, score_after, player_delta, enemy_score_before, enemy_score_after, enemy_delta, delta)
 
+        if len(deltas):
+            best_attack = np.argmax(deltas)
 
+            # Make sure that this is a good move to make
+            if max(deltas) > 0:
+                attack = possible_attacks[best_attack]
+                terr_id = attack[0]
+                adj_terr_id = attack[1]
+                enemy_player_id = get_owner(state, adj_terr_id)
+                print "%s attacks %s (owned by %s) from %s." % (players[player_id]['name'], territories[adj_terr_id]['name'], players[enemy_player_id]['name'], territories[terr_id]['name'])
+                attackers = state['troops'][terr_id]
+                defenders = state['troops'][adj_terr_id]
+
+                # TODO: Actual battle simulation
+                new_attackers = troops_left(attackers, defenders)
+
+                state['troops'][terr_id] = 1
+                state['troops'][adj_terr_id] = new_attackers - 1
+                takeover(state, adj_terr_id, player_id)
+
+                update_continents(state)
+                update_exposure(state)
+                update_score(state)
+            else:
+                print "%s does not attack" % players[player_id]['name']
+                done = True
+        else:
+            print "%s does not attack" % players[player_id]['name']
+            done = True
+
+    # TODO: Move Troops
+
+    # Check to see if a player gets knocked out
+    for p in active_players:
+        if len(state['players'][p]['territories']) == 0:
+            print "Player %s has been eliminated by %s!" % (players[p]['name'], players[player_id]['name'])
+            active_players.remove(p)
+
+    # Check to see if the player wins
+    if len(active_players) == 1:
+        print "%s wins!" % players[player_id]['name']
+        game_running = False
+
+    print_state(state)
+
+    turn += 1
+
+    player_id += 1
+    if player_id >= len(players):
+        player_id = 0
